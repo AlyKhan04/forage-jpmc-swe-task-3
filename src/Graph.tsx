@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Table } from '@finos/perspective';
+import { Table, TableData } from '@finos/perspective';
 import { ServerRespond } from './DataStreamer';
 import { DataManipulator } from './DataManipulator';
 import './Graph.css';
@@ -23,9 +23,15 @@ class Graph extends Component<IProps, {}> {
     const elem = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
 
     const schema = {
-      stock: 'string',
-      top_ask_price: 'float',
-      top_bid_price: 'float',
+        // Added different schema to track ratios instead of the top price
+        // To create alerts we added upper and lower bounds and an alert schema.
+        // The price of both stocks was also
+        price_abc: 'float',
+        price_def: 'float',
+        ratio: 'float',
+      alert: 'float',
+      upper_bound: 'float',
+      lower_bound: 'float',
       timestamp: 'date',
     };
 
@@ -35,26 +41,32 @@ class Graph extends Component<IProps, {}> {
     if (this.table) {
       // Load the `table` in the `<perspective-viewer>` DOM reference.
       elem.load(this.table);
+      //Changed the attributes of the graph
+      // Columns allow us to focus on the specified points of a datapoints data on the y axis (ratio, bounds and alerts)
+      // Row Pivot maps each datapoint based on timestamp
+      // Aggregated averages all other data other than timestamp and only considers a datapoint as 'unique' if it has a timestamp.
       elem.setAttribute('view', 'y_line');
-      elem.setAttribute('column-pivots', '["stock"]');
+      elem.setAttribute('columns', '["ratio","lower_bound","upper_bound","alert"]');
       elem.setAttribute('row-pivots', '["timestamp"]');
-      elem.setAttribute('columns', '["top_ask_price"]');
       elem.setAttribute('aggregates', JSON.stringify({
-        stock: 'distinctcount',
-        top_ask_price: 'avg',
-        top_bid_price: 'avg',
+        price_abc: 'avg',
+        price_def: 'avg',
         timestamp: 'distinct count',
+        upper_bound: 'avg',
+        lower_bound: 'avg',
+        alert: 'avg',
+        ratio: 'avg',
       }));
     }
   }
 
-  componentDidUpdate() {
-    if (this.table) {
-      this.table.update(
-        DataManipulator.generateRow(this.props.data),
-      );
+    componentDidUpdate() {
+        if (this.table) {
+            this.table.update([
+                DataManipulator.generateRow(this.props.data),
+            ] as unknown as TableData);
+        }
     }
-  }
 }
 
 export default Graph;
